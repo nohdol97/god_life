@@ -91,16 +91,24 @@ class HomeScreen extends ConsumerWidget {
                 ),
                 SliverList.builder(
                   itemCount: appData.routines.length,
-                  itemBuilder: (context, index) =>
-                      _RoutineTile(routine: appData.routines[index]),
+                  itemBuilder: (context, index) => _RoutineTile(
+                    routine: appData.routines[index],
+                    onToggle: () => ref
+                        .read(appDataProvider.notifier)
+                        .toggleRoutine(appData.routines[index].id),
+                  ),
                 ),
                 SliverToBoxAdapter(
                   child: _SectionHeader(title: '할 일 🌷', subtitle: '가볍게 체크하기'),
                 ),
                 SliverList.builder(
                   itemCount: appData.todos.length,
-                  itemBuilder: (context, index) =>
-                      _TodoTile(todo: appData.todos[index]),
+                  itemBuilder: (context, index) => _TodoTile(
+                    todo: appData.todos[index],
+                    onToggle: () => ref
+                        .read(appDataProvider.notifier)
+                        .toggleTodo(appData.todos[index].id),
+                  ),
                 ),
                 const SliverToBoxAdapter(child: SizedBox(height: 96)),
               ],
@@ -297,9 +305,10 @@ class _SectionHeader extends StatelessWidget {
 }
 
 class _RoutineTile extends StatelessWidget {
-  const _RoutineTile({required this.routine});
+  const _RoutineTile({required this.routine, required this.onToggle});
 
   final Routine routine;
+  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -313,7 +322,7 @@ class _RoutineTile extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         child: Row(
           children: [
-            _CheckMark(active: routine.done),
+            _CheckMark(active: routine.done, onTap: onToggle),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -352,9 +361,10 @@ class _RoutineTile extends StatelessWidget {
 }
 
 class _TodoTile extends StatelessWidget {
-  const _TodoTile({required this.todo});
+  const _TodoTile({required this.todo, required this.onToggle});
 
   final Todo todo;
+  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -368,7 +378,7 @@ class _TodoTile extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         child: Row(
           children: [
-            _CheckMark(active: todo.done),
+            _CheckMark(active: todo.done, onTap: onToggle),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -407,32 +417,36 @@ class _TodoTile extends StatelessWidget {
 }
 
 class _CheckMark extends StatelessWidget {
-  const _CheckMark({required this.active});
+  const _CheckMark({required this.active, this.onTap});
 
   final bool active;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 22,
-      width: 22,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: active ? AppPalette.coralStrong : AppPalette.coralSoft,
-        border: Border.all(
-          color: active
-              ? AppPalette.coralStrong
-              : AppPalette.textMuted.withOpacity(0.25),
-          width: 1.4,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 22,
+        width: 22,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: active ? AppPalette.coralStrong : AppPalette.coralSoft,
+          border: Border.all(
+            color: active
+                ? AppPalette.coralStrong
+                : AppPalette.textMuted.withOpacity(0.25),
+            width: 1.4,
+          ),
         ),
+        child: active
+            ? const Icon(
+                CupertinoIcons.check_mark,
+                size: 14,
+                color: CupertinoColors.white,
+              )
+            : null,
       ),
-      child: active
-          ? const Icon(
-              CupertinoIcons.check_mark,
-              size: 14,
-              color: CupertinoColors.white,
-            )
-          : null,
     );
   }
 }

@@ -6,6 +6,13 @@ class AppData {
   final List<Routine> routines;
   final List<Todo> todos;
 
+  AppData copyWith({List<Routine>? routines, List<Todo>? todos}) {
+    return AppData(
+      routines: routines ?? this.routines,
+      todos: todos ?? this.todos,
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'routines': routines.map((r) => r.toJson()).toList(),
