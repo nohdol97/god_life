@@ -37,23 +37,41 @@ class AppDataNotifier extends AsyncNotifier<AppData> {
   Future<void> toggleRoutine(String id) async {
     final current = state.asData?.value;
     if (current == null) return;
+    final target = current.routines.firstWhere((r) => r.id == id);
+    final toggledDone = !target.done;
     final updated = current.copyWith(
       routines: current.routines
           .map((r) => r.id == id ? r.copyWith(done: !r.done) : r)
           .toList(),
     );
     await _persist(updated);
+    await _handleToggleNotification(
+      id: id,
+      title: target.title,
+      body: target.note.isEmpty ? target.time : target.note,
+      remindAt: target.remindAt,
+      toDone: toggledDone,
+    );
   }
 
   Future<void> toggleTodo(String id) async {
     final current = state.asData?.value;
     if (current == null) return;
+    final target = current.todos.firstWhere((t) => t.id == id);
+    final toggledDone = !target.done;
     final updated = current.copyWith(
       todos: current.todos
           .map((t) => t.id == id ? t.copyWith(done: !t.done) : t)
           .toList(),
     );
     await _persist(updated);
+    await _handleToggleNotification(
+      id: id,
+      title: target.title,
+      body: target.due,
+      remindAt: target.remindAt,
+      toDone: toggledDone,
+    );
   }
 
   Future<void> _persist(AppData data) async {
@@ -122,18 +140,8 @@ class AppDataNotifier extends AsyncNotifier<AppData> {
     String body,
     String remindAt,
   ) async {
-    if (remindAt.isEmpty) return;
-    final parts = remindAt.split(':');
-    if (parts.length < 2) return;
-    final hour = int.tryParse(parts[0]);
-    final minute = int.tryParse(parts[1]);
-    if (hour == null || minute == null) return;
-
-    final now = DateTime.now();
-    var scheduled = DateTime(now.year, now.month, now.day, hour, minute);
-    if (scheduled.isBefore(now)) {
-      scheduled = scheduled.add(const Duration(days: 1));
-    }
+    final scheduled = _nextDateTime(remindAt);
+    if (scheduled == null) return;
     await ref
         .read(notificationServiceProvider)
         .scheduleOnce(
@@ -142,5 +150,46 @@ class AppDataNotifier extends AsyncNotifier<AppData> {
           body: body,
           dateTime: scheduled,
         );
+  }
+
+  Future<void> _handleToggleNotification({
+    required String id,
+    required String title,
+    required String body,
+    required String remindAt,
+    required bool toDone,
+  }) async {
+    if (remindAt.isEmpty) return;
+    final notifier = ref.read(notificationServiceProvider);
+    final notiId = id.hashCode & 0x7fffffff;
+    if (toDone) {
+      await notifier.cancel(notiId);
+    } else {
+      final scheduled = _nextDateTime(remindAt);
+      if (scheduled != null) {
+        await notifier.scheduleOnce(
+          id: notiId,
+          title: title,
+          body: body,
+          dateTime: scheduled,
+        );
+      }
+    }
+  }
+
+  DateTime? _nextDateTime(String remindAt) {
+    if (remindAt.isEmpty) return null;
+    final parts = remindAt.split(':');
+    if (parts.length < 2) return null;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) return null;
+
+    final now = DateTime.now();
+    var scheduled = DateTime(now.year, now.month, now.day, hour, minute);
+    if (scheduled.isBefore(now)) {
+      scheduled = scheduled.add(const Duration(days: 1));
+    }
+    return scheduled;
   }
 }
