@@ -522,14 +522,19 @@ class _AddItemSheet extends StatefulWidget {
 
 class _AddItemSheetState extends State<_AddItemSheet> {
   final _titleController = TextEditingController();
-  final _secondaryController = TextEditingController();
+  final _timeController = TextEditingController();
+  final _noteController = TextEditingController();
+  final _dueController = TextEditingController();
+  String _priority = '보통';
   ItemType _type = ItemType.routine;
   String? _error;
 
   @override
   void dispose() {
     _titleController.dispose();
-    _secondaryController.dispose();
+    _timeController.dispose();
+    _noteController.dispose();
+    _dueController.dispose();
     super.dispose();
   }
 
@@ -568,13 +573,53 @@ class _AddItemSheetState extends State<_AddItemSheet> {
               clearButtonMode: OverlayVisibilityMode.editing,
             ),
             const SizedBox(height: 8),
-            CupertinoTextField(
-              controller: _secondaryController,
-              placeholder: _type == ItemType.routine
-                  ? '시간/메모(선택)'
-                  : '기한/우선순위(선택)',
-              clearButtonMode: OverlayVisibilityMode.editing,
-            ),
+            if (_type == ItemType.routine) ...[
+              CupertinoTextField(
+                controller: _timeController,
+                placeholder: '시간 (예: 07:30, 아침)',
+                clearButtonMode: OverlayVisibilityMode.editing,
+              ),
+              const SizedBox(height: 8),
+              CupertinoTextField(
+                controller: _noteController,
+                placeholder: '메모(선택)',
+                clearButtonMode: OverlayVisibilityMode.editing,
+              ),
+            ] else ...[
+              CupertinoTextField(
+                controller: _dueController,
+                placeholder: '기한 (예: 오늘, D-2)',
+                clearButtonMode: OverlayVisibilityMode.editing,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                '우선순위',
+                style: TextStyle(fontSize: 13, color: AppPalette.textMuted),
+              ),
+              const SizedBox(height: 6),
+              CupertinoSegmentedControl<String>(
+                groupValue: _priority,
+                children: const {
+                  '낮음': Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    child: Text('낮음'),
+                  ),
+                  '보통': Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    child: Text('보통'),
+                  ),
+                  '높음': Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    child: Text('높음'),
+                  ),
+                },
+                onValueChanged: (value) {
+                  setState(() {
+                    _priority = value;
+                  });
+                },
+              ),
+            ],
             if (_error != null) ...[
               const SizedBox(height: 6),
               Text(
@@ -606,19 +651,21 @@ class _AddItemSheetState extends State<_AddItemSheet> {
       setState(() => _error = '제목을 입력해주세요');
       return;
     }
-    final secondary = _secondaryController.text.trim();
+    final time = _timeController.text.trim();
+    final note = _noteController.text.trim();
+    final due = _dueController.text.trim();
 
     if (_type == ItemType.routine) {
       await widget.notifier.addRoutine(
         title: title,
-        time: secondary.isEmpty ? '언제든' : secondary,
-        note: '',
+        time: time.isEmpty ? '언제든' : time,
+        note: note,
       );
     } else {
       await widget.notifier.addTodo(
         title: title,
-        due: secondary.isEmpty ? '오늘' : secondary,
-        priority: '보통',
+        due: due.isEmpty ? '오늘' : due,
+        priority: _priority,
       );
     }
     if (mounted) Navigator.of(context).pop();

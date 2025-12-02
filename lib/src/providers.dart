@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app_data.dart';
@@ -12,9 +14,15 @@ final appDataProvider = AsyncNotifierProvider<AppDataNotifier, AppData>(
 );
 
 class AppDataNotifier extends AsyncNotifier<AppData> {
+  Timer? _saveTimer;
+  AppData? _pendingData;
+
   @override
   Future<AppData> build() async {
     final store = ref.read(localStoreProvider);
+    ref.onDispose(() {
+      _saveTimer?.cancel();
+    });
     final data = await store.load();
     return data;
   }
@@ -43,11 +51,18 @@ class AppDataNotifier extends AsyncNotifier<AppData> {
 
   Future<void> _persist(AppData data) async {
     state = AsyncData(data);
-    try {
-      await ref.read(localStoreProvider).save(data);
-    } catch (e, st) {
-      state = AsyncError(e, st);
-    }
+    _pendingData = data;
+    _saveTimer?.cancel();
+    _saveTimer = Timer(const Duration(milliseconds: 300), () async {
+      try {
+        final pending = _pendingData;
+        if (pending != null) {
+          await ref.read(localStoreProvider).save(pending);
+        }
+      } catch (e, st) {
+        state = AsyncError(e, st);
+      }
+    });
   }
 
   Future<void> addRoutine({
