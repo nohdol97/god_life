@@ -44,6 +44,7 @@ class AppData {
           time: '07:30',
           note: '천천히 읽기',
           done: true,
+          remindAt: '07:30',
         ),
         Routine(
           id: 'r2',
@@ -51,14 +52,45 @@ class AppData {
           time: '07:45',
           note: '물과 함께',
           done: true,
+          remindAt: '07:45',
         ),
-        Routine(id: 'r3', title: '환기하기', time: '08:00', note: '창문 5분 열기'),
-        Routine(id: 'r4', title: '주 2회 운동', time: '저녁', note: '가볍게 스트레칭'),
+        Routine(
+          id: 'r3',
+          title: '환기하기',
+          time: '08:00',
+          note: '창문 5분 열기',
+          remindAt: '08:00',
+        ),
+        Routine(
+          id: 'r4',
+          title: '주 2회 운동',
+          time: '저녁',
+          note: '가볍게 스트레칭',
+          remindAt: '19:00',
+        ),
       ],
       todos: [
-        Todo(id: 't1', title: '장보기 리스트 확인', due: '오늘', priority: '보통'),
-        Todo(id: 't2', title: '엄마 생신 선물 포장', due: 'D-2', priority: '높음'),
-        Todo(id: 't3', title: '세탁기 돌리기', due: '오늘 오후', priority: '낮음'),
+        Todo(
+          id: 't1',
+          title: '장보기 리스트 확인',
+          due: '오늘',
+          priority: '보통',
+          remindAt: '12:00',
+        ),
+        Todo(
+          id: 't2',
+          title: '엄마 생신 선물 포장',
+          due: 'D-2',
+          priority: '높음',
+          remindAt: '18:00',
+        ),
+        Todo(
+          id: 't3',
+          title: '세탁기 돌리기',
+          due: '오늘 오후',
+          priority: '낮음',
+          remindAt: '15:00',
+        ),
       ],
     );
   }
@@ -72,6 +104,7 @@ class Routine {
     required this.note,
     this.done = false,
     this.locked = false,
+    this.remindAt = '',
   });
 
   final String id;
@@ -80,6 +113,7 @@ class Routine {
   final String note;
   final bool done;
   final bool locked;
+  final String remindAt;
 
   Routine copyWith({
     String? id,
@@ -88,6 +122,7 @@ class Routine {
     String? note,
     bool? done,
     bool? locked,
+    String? remindAt,
   }) {
     return Routine(
       id: id ?? this.id,
@@ -96,6 +131,7 @@ class Routine {
       note: note ?? this.note,
       done: done ?? this.done,
       locked: locked ?? this.locked,
+      remindAt: remindAt ?? this.remindAt,
     );
   }
 
@@ -107,6 +143,7 @@ class Routine {
       'note': note,
       'done': done,
       'locked': locked,
+      'remindAt': remindAt,
     };
   }
 
@@ -118,6 +155,7 @@ class Routine {
       note: json['note'] as String? ?? '',
       done: json['done'] as bool? ?? false,
       locked: json['locked'] as bool? ?? false,
+      remindAt: json['remindAt'] as String? ?? '',
     );
   }
 }
@@ -130,6 +168,7 @@ class Todo {
     this.priority = '보통',
     this.done = false,
     this.locked = false,
+    this.remindAt = '',
   });
 
   final String id;
@@ -138,6 +177,7 @@ class Todo {
   final String priority;
   final bool done;
   final bool locked;
+  final String remindAt;
 
   Todo copyWith({
     String? id,
@@ -146,6 +186,7 @@ class Todo {
     String? priority,
     bool? done,
     bool? locked,
+    String? remindAt,
   }) {
     return Todo(
       id: id ?? this.id,
@@ -154,6 +195,7 @@ class Todo {
       priority: priority ?? this.priority,
       done: done ?? this.done,
       locked: locked ?? this.locked,
+      remindAt: remindAt ?? this.remindAt,
     );
   }
 
@@ -165,6 +207,7 @@ class Todo {
       'priority': priority,
       'done': done,
       'locked': locked,
+      'remindAt': remindAt,
     };
   }
 
@@ -176,6 +219,7 @@ class Todo {
       priority: json['priority'] as String? ?? '보통',
       done: json['done'] as bool? ?? false,
       locked: json['locked'] as bool? ?? false,
+      remindAt: json['remindAt'] as String? ?? '',
     );
   }
 }

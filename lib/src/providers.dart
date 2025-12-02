@@ -76,27 +76,71 @@ class AppDataNotifier extends AsyncNotifier<AppData> {
     required String title,
     String time = '언제든',
     String note = '',
+    String remindAt = '',
   }) async {
     final current =
         state.asData?.value ?? const AppData(routines: [], todos: []);
-    final newRoutine = Routine(id: _id(), title: title, time: time, note: note);
+    final newRoutine = Routine(
+      id: _id(),
+      title: title,
+      time: time,
+      note: note,
+      remindAt: remindAt,
+    );
     final updated = current.copyWith(
       routines: [...current.routines, newRoutine],
     );
     await _persist(updated);
+    await _scheduleIfNeeded(newRoutine.id, title, note, remindAt);
   }
 
   Future<void> addTodo({
     required String title,
     String due = '오늘',
     String priority = '보통',
+    String remindAt = '',
   }) async {
     final current =
         state.asData?.value ?? const AppData(routines: [], todos: []);
-    final newTodo = Todo(id: _id(), title: title, due: due, priority: priority);
+    final newTodo = Todo(
+      id: _id(),
+      title: title,
+      due: due,
+      priority: priority,
+      remindAt: remindAt,
+    );
     final updated = current.copyWith(todos: [...current.todos, newTodo]);
     await _persist(updated);
+    await _scheduleIfNeeded(newTodo.id, title, due, remindAt);
   }
 
   String _id() => DateTime.now().microsecondsSinceEpoch.toString();
+
+  Future<void> _scheduleIfNeeded(
+    String id,
+    String title,
+    String body,
+    String remindAt,
+  ) async {
+    if (remindAt.isEmpty) return;
+    final parts = remindAt.split(':');
+    if (parts.length < 2) return;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) return;
+
+    final now = DateTime.now();
+    var scheduled = DateTime(now.year, now.month, now.day, hour, minute);
+    if (scheduled.isBefore(now)) {
+      scheduled = scheduled.add(const Duration(days: 1));
+    }
+    await ref
+        .read(notificationServiceProvider)
+        .scheduleOnce(
+          id: id.hashCode & 0x7fffffff,
+          title: title,
+          body: body,
+          dateTime: scheduled,
+        );
+  }
 }

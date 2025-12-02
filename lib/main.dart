@@ -527,6 +527,7 @@ class _AddItemSheetState extends State<_AddItemSheet> {
   final _dueController = TextEditingController();
   String _priority = '보통';
   ItemType _type = ItemType.routine;
+  DateTime? _reminderTime;
   String? _error;
 
   @override
@@ -585,6 +586,13 @@ class _AddItemSheetState extends State<_AddItemSheet> {
                 placeholder: '메모(선택)',
                 clearButtonMode: OverlayVisibilityMode.editing,
               ),
+              const SizedBox(height: 8),
+              _ReminderPicker(
+                label: '알림 시간',
+                value: _reminderTime,
+                onPick: _pickTime,
+                onClear: () => setState(() => _reminderTime = null),
+              ),
             ] else ...[
               CupertinoTextField(
                 controller: _dueController,
@@ -618,6 +626,13 @@ class _AddItemSheetState extends State<_AddItemSheet> {
                     _priority = value;
                   });
                 },
+              ),
+              const SizedBox(height: 8),
+              _ReminderPicker(
+                label: '알림 시간',
+                value: _reminderTime,
+                onPick: _pickTime,
+                onClear: () => setState(() => _reminderTime = null),
               ),
             ],
             if (_error != null) ...[
@@ -660,16 +675,119 @@ class _AddItemSheetState extends State<_AddItemSheet> {
         title: title,
         time: time.isEmpty ? '언제든' : time,
         note: note,
+        remindAt: _reminderTime != null ? _formatTime(_reminderTime!) : '',
       );
     } else {
       await widget.notifier.addTodo(
         title: title,
         due: due.isEmpty ? '오늘' : due,
         priority: _priority,
+        remindAt: _reminderTime != null ? _formatTime(_reminderTime!) : '',
       );
     }
     if (mounted) Navigator.of(context).pop();
   }
+
+  Future<void> _pickTime() async {
+    DateTime initial = _reminderTime ?? DateTime.now();
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (context) {
+        return Container(
+          height: 260,
+          color: CupertinoColors.systemBackground.resolveFrom(context),
+          child: Column(
+            children: [
+              Container(
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('완료'),
+                ),
+              ),
+              Expanded(
+                child: CupertinoDatePicker(
+                  mode: CupertinoDatePickerMode.time,
+                  use24hFormat: true,
+                  initialDateTime: initial,
+                  onDateTimeChanged: (value) {
+                    setState(() => _reminderTime = value);
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  String _formatTime(DateTime value) {
+    final hh = value.hour.toString().padLeft(2, '0');
+    final mm = value.minute.toString().padLeft(2, '0');
+    return '$hh:$mm';
+  }
 }
 
 enum ItemType { routine, todo }
+
+class _ReminderPicker extends StatelessWidget {
+  const _ReminderPicker({
+    required this.label,
+    required this.value,
+    required this.onPick,
+    required this.onClear,
+  });
+
+  final String label;
+  final DateTime? value;
+  final VoidCallback onPick;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final display = value == null
+        ? '알림 없음'
+        : '${value!.hour.toString().padLeft(2, '0')}:${value!.minute.toString().padLeft(2, '0')}';
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(color: AppPalette.textMuted)),
+            Text(
+              display,
+              style: const TextStyle(
+                color: AppPalette.textDark,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            CupertinoButton(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              onPressed: onPick,
+              child: const Text('선택'),
+            ),
+            CupertinoButton(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              onPressed: onClear,
+              child: const Text(
+                '지우기',
+                style: TextStyle(color: CupertinoColors.destructiveRed),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
