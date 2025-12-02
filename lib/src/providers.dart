@@ -1,9 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import 'app_data.dart';
 import 'local_store.dart';
+import 'notifications.dart';
 
 final localStoreProvider = Provider<LocalStore>((ref) {
   return LocalStore();
@@ -12,6 +14,10 @@ final localStoreProvider = Provider<LocalStore>((ref) {
 final appDataProvider = AsyncNotifierProvider<AppDataNotifier, AppData>(
   AppDataNotifier.new,
 );
+
+final notificationServiceProvider = Provider<NotificationService>((ref) {
+  return NotificationService(FlutterLocalNotificationsPlugin());
+});
 
 class AppDataNotifier extends AsyncNotifier<AppData> {
   Timer? _saveTimer;
@@ -23,6 +29,7 @@ class AppDataNotifier extends AsyncNotifier<AppData> {
     ref.onDispose(() {
       _saveTimer?.cancel();
     });
+    await ref.read(notificationServiceProvider).init();
     final data = await store.load();
     return data;
   }
