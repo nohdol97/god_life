@@ -114,7 +114,11 @@ class HomeScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const _AddButton(),
+          _AddButton(
+            onPressed: () {
+              _showAddSheet(context, ref.read(appDataProvider.notifier));
+            },
+          ),
         ],
       ),
     );
@@ -452,7 +456,9 @@ class _CheckMark extends StatelessWidget {
 }
 
 class _AddButton extends StatelessWidget {
-  const _AddButton();
+  const _AddButton({required this.onPressed});
+
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -464,7 +470,7 @@ class _AddButton extends StatelessWidget {
         child: CupertinoButton.filled(
           padding: const EdgeInsets.symmetric(vertical: 14),
           borderRadius: BorderRadius.circular(14),
-          onPressed: () {},
+          onPressed: onPressed,
           child: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -497,3 +503,126 @@ class AppPalette {
   static const Color textDark = Color(0xFF3A2F2F);
   static const Color textMuted = Color(0xFF6D5C5C);
 }
+
+void _showAddSheet(BuildContext context, AppDataNotifier notifier) {
+  showCupertinoModalPopup<void>(
+    context: context,
+    builder: (context) => _AddItemSheet(notifier: notifier),
+  );
+}
+
+class _AddItemSheet extends StatefulWidget {
+  const _AddItemSheet({required this.notifier});
+
+  final AppDataNotifier notifier;
+
+  @override
+  State<_AddItemSheet> createState() => _AddItemSheetState();
+}
+
+class _AddItemSheetState extends State<_AddItemSheet> {
+  final _titleController = TextEditingController();
+  final _secondaryController = TextEditingController();
+  ItemType _type = ItemType.routine;
+  String? _error;
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _secondaryController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CupertinoActionSheet(
+      title: const Text('추가하기'),
+      message: Padding(
+        padding: const EdgeInsets.only(top: 8.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CupertinoSegmentedControl<ItemType>(
+              groupValue: _type,
+              children: const {
+                ItemType.routine: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  child: Text('루틴'),
+                ),
+                ItemType.todo: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  child: Text('할 일'),
+                ),
+              },
+              onValueChanged: (value) {
+                setState(() {
+                  _type = value;
+                });
+              },
+            ),
+            const SizedBox(height: 12),
+            CupertinoTextField(
+              controller: _titleController,
+              placeholder: _type == ItemType.routine ? '루틴 제목' : '할 일 제목',
+              clearButtonMode: OverlayVisibilityMode.editing,
+            ),
+            const SizedBox(height: 8),
+            CupertinoTextField(
+              controller: _secondaryController,
+              placeholder: _type == ItemType.routine
+                  ? '시간/메모(선택)'
+                  : '기한/우선순위(선택)',
+              clearButtonMode: OverlayVisibilityMode.editing,
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                _error!,
+                style: const TextStyle(color: CupertinoColors.systemRed),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        CupertinoActionSheetAction(
+          onPressed: _handleSave,
+          isDefaultAction: true,
+          child: const Text('저장'),
+        ),
+      ],
+      cancelButton: CupertinoActionSheetAction(
+        onPressed: () => Navigator.of(context).pop(),
+        isDestructiveAction: false,
+        child: const Text('취소'),
+      ),
+    );
+  }
+
+  Future<void> _handleSave() async {
+    final title = _titleController.text.trim();
+    if (title.isEmpty) {
+      setState(() => _error = '제목을 입력해주세요');
+      return;
+    }
+    final secondary = _secondaryController.text.trim();
+
+    if (_type == ItemType.routine) {
+      await widget.notifier.addRoutine(
+        title: title,
+        time: secondary.isEmpty ? '언제든' : secondary,
+        note: '',
+      );
+    } else {
+      await widget.notifier.addTodo(
+        title: title,
+        due: secondary.isEmpty ? '오늘' : secondary,
+        priority: '보통',
+      );
+    }
+    if (mounted) Navigator.of(context).pop();
+  }
+}
+
+enum ItemType { routine, todo }

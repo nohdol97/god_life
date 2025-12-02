@@ -49,4 +49,32 @@ class AppDataNotifier extends AsyncNotifier<AppData> {
       state = AsyncError(e, st);
     }
   }
+
+  Future<void> addRoutine({
+    required String title,
+    String time = '언제든',
+    String note = '',
+  }) async {
+    final current =
+        state.asData?.value ?? const AppData(routines: [], todos: []);
+    final newRoutine = Routine(id: _id(), title: title, time: time, note: note);
+    final updated = current.copyWith(
+      routines: [...current.routines, newRoutine],
+    );
+    await _persist(updated);
+  }
+
+  Future<void> addTodo({
+    required String title,
+    String due = '오늘',
+    String priority = '보통',
+  }) async {
+    final current =
+        state.asData?.value ?? const AppData(routines: [], todos: []);
+    final newTodo = Todo(id: _id(), title: title, due: due, priority: priority);
+    final updated = current.copyWith(todos: [...current.todos, newTodo]);
+    await _persist(updated);
+  }
+
+  String _id() => DateTime.now().microsecondsSinceEpoch.toString();
 }
