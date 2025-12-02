@@ -1,8 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show LinearProgressIndicator;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'src/app_data.dart';
+import 'src/providers.dart';
 
 void main() {
-  runApp(const GodLifeApp());
+  runApp(const ProviderScope(child: GodLifeApp()));
 }
 
 class GodLifeApp extends StatelessWidget {
@@ -10,10 +14,10 @@ class GodLifeApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const CupertinoApp(
+    return CupertinoApp(
       debugShowCheckedModeBanner: false,
       title: 'God Life',
-      theme: CupertinoThemeData(
+      theme: const CupertinoThemeData(
         primaryColor: AppPalette.coralStrong,
         scaffoldBackgroundColor: AppPalette.coralBase,
         barBackgroundColor: AppPalette.coralSoft,
@@ -35,28 +39,18 @@ class GodLifeApp extends StatelessWidget {
           ),
         ),
       ),
-      home: HomeScreen(),
+      home: const HomeScreen(),
     );
   }
 }
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
-  List<Routine> get routines => const [
-        Routine(title: '아침 물 2컵', time: '07:30', note: '천천히 마시기', done: true),
-        Routine(title: '스트레칭 10분', time: '07:45', note: '기상 직후', done: false),
-        Routine(title: '하루 말씀 묵상', time: '08:10', note: '10분', done: false),
-      ];
-
-  List<Todo> get todos => const [
-        Todo(title: '장보기 리스트 확인', due: '오늘', priority: '보통'),
-        Todo(title: '엄마 생신 선물 포장', due: 'D-2', priority: '높음'),
-        Todo(title: '세탁기 돌리기', due: '오늘 오후', priority: '낮음'),
-      ];
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final data = ref.watch(appDataProvider);
+
     return CupertinoPageScaffold(
       child: Stack(
         children: [
@@ -65,46 +59,52 @@ class HomeScreen extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [
-                  AppPalette.coralBase,
-                  AppPalette.coralSoft,
-                ],
+                colors: [AppPalette.coralBase, AppPalette.coralSoft],
               ),
             ),
           ),
-          CustomScrollView(
-            slivers: [
-              const CupertinoSliverNavigationBar(
-                largeTitle: Text('오늘 ✨'),
+          data.when(
+            loading: () => const Center(child: CupertinoActivityIndicator()),
+            error: (e, _) => Center(
+              child: Text(
+                '불러오기 실패: $e',
+                style: const TextStyle(color: AppPalette.textDark),
               ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  child: _OverviewCard(routines: routines, todos: todos),
+            ),
+            data: (appData) => CustomScrollView(
+              slivers: [
+                const CupertinoSliverNavigationBar(largeTitle: Text('오늘 ✨')),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 8,
+                    ),
+                    child: _OverviewCard(
+                      routines: appData.routines,
+                      todos: appData.todos,
+                    ),
+                  ),
                 ),
-              ),
-              SliverToBoxAdapter(
-                child: _SectionHeader(
-                  title: '루틴 🐣',
-                  subtitle: '오늘의 작은 습관',
+                SliverToBoxAdapter(
+                  child: _SectionHeader(title: '루틴 🐣', subtitle: '오늘의 작은 습관'),
                 ),
-              ),
-              SliverList.builder(
-                itemCount: routines.length,
-                itemBuilder: (context, index) => _RoutineTile(routine: routines[index]),
-              ),
-              SliverToBoxAdapter(
-                child: _SectionHeader(
-                  title: '할 일 🌷',
-                  subtitle: '가볍게 체크하기',
+                SliverList.builder(
+                  itemCount: appData.routines.length,
+                  itemBuilder: (context, index) =>
+                      _RoutineTile(routine: appData.routines[index]),
                 ),
-              ),
-              SliverList.builder(
-                itemCount: todos.length,
-                itemBuilder: (context, index) => _TodoTile(todo: todos[index]),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 96)),
-            ],
+                SliverToBoxAdapter(
+                  child: _SectionHeader(title: '할 일 🌷', subtitle: '가볍게 체크하기'),
+                ),
+                SliverList.builder(
+                  itemCount: appData.todos.length,
+                  itemBuilder: (context, index) =>
+                      _TodoTile(todo: appData.todos[index]),
+                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 96)),
+              ],
+            ),
           ),
           const _AddButton(),
         ],
@@ -113,37 +113,8 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-class Routine {
-  const Routine({
-    required this.title,
-    required this.time,
-    required this.note,
-    this.done = false,
-  });
-
-  final String title;
-  final String time;
-  final String note;
-  final bool done;
-}
-
-class Todo {
-  const Todo({
-    required this.title,
-    required this.due,
-    this.priority = '보통',
-  });
-
-  final String title;
-  final String due;
-  final String priority;
-}
-
 class _OverviewCard extends StatelessWidget {
-  const _OverviewCard({
-    required this.routines,
-    required this.todos,
-  });
+  const _OverviewCard({required this.routines, required this.todos});
 
   final List<Routine> routines;
   final List<Todo> todos;
@@ -152,7 +123,9 @@ class _OverviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final completed = routines.where((r) => r.done).length;
     final totalRoutine = routines.length;
-    final double doneRatio = totalRoutine == 0 ? 0.0 : (completed / totalRoutine);
+    final double doneRatio = totalRoutine == 0
+        ? 0.0
+        : (completed / totalRoutine);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -264,10 +237,7 @@ class _StatChip extends StatelessWidget {
 }
 
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({
-    required this.title,
-    required this.subtitle,
-  });
+  const _SectionHeader({required this.title, required this.subtitle});
 
   final String title;
   final String subtitle;
@@ -315,10 +285,7 @@ class _SectionHeader extends StatelessWidget {
                 SizedBox(width: 4),
                 Text(
                   '추가',
-                  style: TextStyle(
-                    color: AppPalette.textDark,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: AppPalette.textDark, fontSize: 14),
                 ),
               ],
             ),
@@ -401,7 +368,7 @@ class _TodoTile extends StatelessWidget {
         padding: const EdgeInsets.all(14),
         child: Row(
           children: [
-            const _CheckMark(active: false),
+            _CheckMark(active: todo.done),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -453,7 +420,9 @@ class _CheckMark extends StatelessWidget {
         shape: BoxShape.circle,
         color: active ? AppPalette.coralStrong : AppPalette.coralSoft,
         border: Border.all(
-          color: active ? AppPalette.coralStrong : AppPalette.textMuted.withOpacity(0.25),
+          color: active
+              ? AppPalette.coralStrong
+              : AppPalette.textMuted.withOpacity(0.25),
           width: 1.4,
         ),
       ),
@@ -485,7 +454,10 @@ class _AddButton extends StatelessWidget {
           child: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(CupertinoIcons.add_circled_solid, color: CupertinoColors.white),
+              Icon(
+                CupertinoIcons.add_circled_solid,
+                color: CupertinoColors.white,
+              ),
               SizedBox(width: 8),
               Text(
                 '오늘 루틴/할 일 추가하기',
